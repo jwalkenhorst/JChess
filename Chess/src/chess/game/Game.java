@@ -66,7 +66,12 @@ public class Game implements Serializable{
 			return this.move;
 		}
 		
-		//TODO: toString
+		@Override
+		public String toString(){
+			// TODO a real implementation
+			return super.toString();
+		}
+		
 		@Override
 		public void undo(){
 			if (!this.executed) throw new IllegalStateException("Move not executed yet.");
@@ -309,7 +314,7 @@ public class Game implements Serializable{
 		Player current = this.turn;
 		if (current != Player.GAME_OVER){
 			boolean currentPlayerCheck = this.board.isCheck(current);
-			//TODO: check enforcement
+			//TODO: check enforcement at model level - currently only the UI strictly enforces check movement rules
 			//if (currentPlayerCheck) throw new IllegalStateException("Player may not end turn in check.");
 			setCheck(current, currentPlayerCheck);
 		} else{
@@ -324,10 +329,10 @@ public class Game implements Serializable{
 		if (allMoves.isEmpty()){
 			this.turn = Player.GAME_OVER;
 			if (nextPlayerCheck){
-				//TODO: checkmate
+				//TODO: checkmate - no model logic for handling checkmate, no end-of-game events aside from the player changing to GAME_OVER 
 				JOptionPane.showMessageDialog(null, "Checkmate");
 			} else{
-				//TODO: stalemate
+				//TODO: stalemate  - no model logic for handling stalemate, no end-of-game events aside from the player changing to GAME_OVER
 				JOptionPane.showMessageDialog(null, "Stalemate");
 			}
 		}

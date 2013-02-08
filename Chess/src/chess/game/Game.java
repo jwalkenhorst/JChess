@@ -182,6 +182,15 @@ public class Game implements Serializable{
 		this.propertyChange.firePropertyChange("history", null, getHistory());
 	}
 	
+	public List<Move> getAllCurrentMoves(){
+		if(!Player.getPlayers().contains(this.turn)) return Collections.emptyList();
+		List<Move> allMoves = new ArrayList<>();
+		for (Location loc : this.board.getPlayerLocations(this.turn)){
+			allMoves.addAll(getMoves(loc));
+		}
+		return allMoves;
+	}
+	
 	public Piece getBlackKing(){
 		return this.board.getBlackKing();
 	}
@@ -198,6 +207,22 @@ public class Game implements Serializable{
 	}
 	
 	/**
+	 * @return a list of locations that the piece at location may move to, or an empty list if it may not move or there is no piece there.
+	 */
+	public List<Move> getMoves(Location start){
+		Piece moving = this.board.getPiece(start);
+		List<Move> moves;
+		if (moving == null || moving.getPlayer()!= this.turn) moves = Collections.emptyList();
+		else moves = moving.getMoves(start);
+		for (Iterator<Move> iterator = moves.iterator(); iterator.hasNext();){
+			Move move = iterator.next();
+			if (move.checksPlayer()) iterator.remove();
+			
+		}
+		return moves;
+	}
+	
+	/**
 	 * @see Board.getPiece;
 	 */
 	public Piece getPiece(Location location){
@@ -211,22 +236,6 @@ public class Game implements Serializable{
 	 */
 	public Player getTurn(){
 		return this.turn;
-	}
-	
-	/**
-	 * @return an array of locations that the piece at location may move to, or an empty array if it may not move or there is no piece there.
-	 */
-	public List<Move> getMoves(Location start){
-		Piece moving = this.board.getPiece(start);
-		List<Move> moves;
-		if (moving == null || moving.getPlayer()!= this.turn) moves = Collections.emptyList();
-		else moves = moving.getMoves(start);
-		for (Iterator<Move> iterator = moves.iterator(); iterator.hasNext();){
-			Move move = iterator.next();
-			if (move.checksPlayer()) iterator.remove();
-			
-		}
-		return moves;
 	}
 	
 	public Piece getWhiteKing(){
@@ -295,7 +304,7 @@ public class Game implements Serializable{
 	protected void nextTurn(){
 		this.setTurn(this.turn.next());
 	}
-	
+
 	protected void setTurn(Player next){
 		Player current = this.turn;
 		if (current != Player.GAME_OVER){
@@ -311,14 +320,8 @@ public class Game implements Serializable{
 		boolean nextPlayerCheck = this.board.isCheck(next);
 		setCheck(next, nextPlayerCheck);
 		this.turn = next;
-		boolean nextHasMoves = false;
-		for (Location loc : this.board.getPlayerLocations(next)){
-			if (getMoves(loc).size() > 0){
-				nextHasMoves = true;
-				break;
-			}
-		}
-		if (!nextHasMoves){
+		List<Move> allMoves = getAllCurrentMoves();
+		if (allMoves.isEmpty()){
 			this.turn = Player.GAME_OVER;
 			if (nextPlayerCheck){
 				//TODO: checkmate

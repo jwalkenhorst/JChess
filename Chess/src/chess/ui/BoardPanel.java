@@ -7,7 +7,7 @@ import java.awt.Graphics;
 import java.awt.GridLayout;
 import java.awt.Image;
 import java.awt.Insets;
-import java.awt.Rectangle;
+import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -36,7 +36,7 @@ import chess.game.Piece;
 import chess.game.Player;
 import chess.ui.images.ImageFactory;
 
-public class BoardPanel extends JPanel{
+public class BoardPanel extends SquarePanel{
 	private static final int DESIGN_SIZE = 400;
 	
 	private enum BoardColor{
@@ -92,8 +92,10 @@ public class BoardPanel extends JPanel{
 		}
 		
 		private boolean isCheck(){
-			if (this.boardLocation.equals(BoardPanel.this.whiteKingLoc) && BoardPanel.this.game.isWhiteCheck()) return true;
-			if (this.boardLocation.equals(BoardPanel.this.blackKingLoc) && BoardPanel.this.game.isBlackCheck()) return true;
+			if (this.boardLocation.equals(BoardPanel.this.whiteKingLoc)
+					&& BoardPanel.this.game.isWhiteCheck()) return true;
+			if (this.boardLocation.equals(BoardPanel.this.blackKingLoc)
+					&& BoardPanel.this.game.isBlackCheck()) return true;
 			return false;
 		}
 	}
@@ -102,7 +104,6 @@ public class BoardPanel extends JPanel{
 	protected Game game;
 	protected ImageFactory images = new ImageFactory();
 	protected Map<Location, PiecePanel> pieces;
-	protected JPanel piecesPanel = null;
 	protected Location whiteKingLoc, blackKingLoc;
 	private MouseListener controllerListener = new MouseAdapter(){
 		@Override
@@ -139,40 +140,18 @@ public class BoardPanel extends JPanel{
 	}
 	
 	public BoardPanel(GameController controller, Player orientation){
+		super(new GridLayout(Board.SIZE + 1, Board.SIZE + 1));
 		this.controller = controller;
 		this.orientation = orientation;
 		this.game = controller.getGame();
 		this.blackKingLoc = this.game.getBlackKing().getLocation();
 		this.whiteKingLoc = this.game.getWhiteKing().getLocation();
 		addGameListeners();
+		addComponentListener();
+		addKeyListener();
 		this.setBorder(BorderFactory.createRaisedBevelBorder());
-		this.setLayout(null);
-		this.add(getPiecesPanel(), null);
-		this.addComponentListener(new java.awt.event.ComponentAdapter(){
-			@Override
-			public void componentResized(java.awt.event.ComponentEvent e){
-				Insets border = getInsets();
-				int size = Math.min(getWidth() - border.left - border.right, getHeight() - border.left - border.right);
-				BoardPanel.this.piecesPanel.setBounds(border.left, border.top, size, size);
-				setLabelSize(size);
-				BoardPanel.this.requestFocusInWindow();
-			}
-			@Override
-			public void componentShown(ComponentEvent e){
-				BoardPanel.this.requestFocusInWindow();
-			}
-		});
-		Dimension dim = new Dimension(DESIGN_SIZE, DESIGN_SIZE);
-		this.setPreferredSize(dim);
-		
-		addKeyListener(new KeyAdapter(){
-			@Override
-			public void keyPressed(KeyEvent e){
-				if (e.getKeyCode() == KeyEvent.VK_ESCAPE){
-					BoardPanel.this.controller.select(null);
-				}
-			}
-		});
+		addPiecePanels();
+		this.setPreferredSize(new Dimension(DESIGN_SIZE, DESIGN_SIZE));
 	}
 	
 	public Image getPieceImage(Piece piece){
@@ -185,25 +164,6 @@ public class BoardPanel extends JPanel{
 	
 	public void raise(Location loc){
 		this.pieces.get(loc).setRaised(true);
-	}
-	
-	@Deprecated
-	@Override
-	@SuppressWarnings("deprecation")
-	public void reshape(int x, int y, int w, int h){
-		int size = Math.min(w, h);
-		super.reshape(x, y, size, size);
-	}
-	
-	@Override
-	public void setBounds(int x, int y, int width, int height){
-		int size = Math.min(width, height);
-		super.setBounds(x, y, size, size);
-	}
-	
-	@Override
-	public void setBounds(Rectangle r){
-		this.setBounds(r.x, r.y, r.width, r.height);
 	}
 	
 	public void setMoveLocations(Location[] newMoves){
@@ -248,6 +208,25 @@ public class BoardPanel extends JPanel{
 		this.pieces.get(this.whiteKingLoc).resetColor();
 	}
 	
+	private void addComponentListener(){
+		this.addComponentListener(new ComponentAdapter(){
+			@Override
+			public void componentResized(java.awt.event.ComponentEvent e){
+				Insets border = getInsets();
+				int size = Math.min(getWidth() - border.left - border.right, getHeight()
+						- border.top
+						- border.bottom);
+				setLabelSize(size);
+				BoardPanel.this.requestFocusInWindow();
+			}
+			
+			@Override
+			public void componentShown(ComponentEvent e){
+				BoardPanel.this.requestFocusInWindow();
+			}
+		});
+	}
+	
 	private void addGameListeners(){
 		this.game.addPropertyChangeListener("whiteCheck", new PropertyChangeListener(){
 			@Override
@@ -266,7 +245,7 @@ public class BoardPanel extends JPanel{
 		this.game.addBoardListener(new BoardListener(){
 			@Override
 			public void boardChanged(BoardChangedEvent e){
-				if (e.getLocations() == null) BoardPanel.this.piecesPanel.repaint();
+				if (e.getLocations() == null) BoardPanel.this.repaint();
 				else for (Location l : e.getLocations()){
 					Piece piece = BoardPanel.this.game.getPiece(l);
 					if (BoardPanel.this.game.getBlackKing().equals(piece)){
@@ -281,47 +260,54 @@ public class BoardPanel extends JPanel{
 		});
 	}
 	
+	private void addKeyListener(){
+		addKeyListener(new KeyAdapter(){
+			@Override
+			public void keyPressed(KeyEvent e){
+				if (e.getKeyCode() == KeyEvent.VK_ESCAPE){
+					BoardPanel.this.controller.select(null);
+				}
+			}
+		});
+	}
+	
 	/**
 	 * This method initializes piecesPanel
 	 * 
 	 * @return javax.swing.JPanel
 	 */
-	private JPanel getPiecesPanel(){
-		if (this.piecesPanel == null){
-			this.piecesPanel = new JPanel(new GridLayout(Board.SIZE + 1, Board.SIZE + 1));
-			int min, max, inc;
-			if (this.orientation == Player.WHITE){
-				min = 0;
-				max = Board.SIZE;
-				inc = 1;
-			} else{
-				min = Board.SIZE - 1;
-				max = -1;
-				inc = -1;
-			}
-			this.pieces = new HashMap<>();
-			for (int i = min; i != max; i += inc){
-				String row = Location.getRowLabel(i);
-				JLabel rowLabel = new JLabel(row, SwingConstants.CENTER);
-				this.labels.add(rowLabel);
-				this.piecesPanel.add(rowLabel);
-				for (int j = min; j != max; j += inc){
-					Location loc = new Location(i, j);
-					PiecePanel panel = new PiecePanel(loc);
-					panel.addMouseListener(this.controllerListener);
-					this.pieces.put(loc, panel);
-					this.piecesPanel.add(panel);
-				}
-			}
-			this.piecesPanel.add(new JLabel());
+	private void addPiecePanels(){
+		int min, max, inc;
+		if (this.orientation == Player.WHITE){
+			min = 0;
+			max = Board.SIZE;
+			inc = 1;
+		} else{
+			min = Board.SIZE - 1;
+			max = -1;
+			inc = -1;
+		}
+		this.pieces = new HashMap<>(Board.SIZE * Board.SIZE, 1.0f);
+		for (int i = min; i != max; i += inc){
+			String row = Location.getRowLabel(i);
+			JLabel rowLabel = new JLabel(row, SwingConstants.CENTER);
+			this.labels.add(rowLabel);
+			this.add(rowLabel);
 			for (int j = min; j != max; j += inc){
-				String col = Location.getColumnLabel(j);
-				JLabel colLabel = new JLabel(col, SwingConstants.CENTER);
-				colLabel.setVerticalAlignment(SwingConstants.TOP);
-				this.labels.add(colLabel);
-				this.piecesPanel.add(colLabel);
+				Location loc = new Location(i, j);
+				PiecePanel panel = new PiecePanel(loc);
+				panel.addMouseListener(this.controllerListener);
+				this.pieces.put(loc, panel);
+				this.add(panel);
 			}
 		}
-		return this.piecesPanel;
+		this.add(new JLabel());
+		for (int j = min; j != max; j += inc){
+			String col = Location.getColumnLabel(j);
+			JLabel colLabel = new JLabel(col, SwingConstants.CENTER);
+			colLabel.setVerticalAlignment(SwingConstants.TOP);
+			this.labels.add(colLabel);
+			this.add(colLabel);
+		}
 	}
 }

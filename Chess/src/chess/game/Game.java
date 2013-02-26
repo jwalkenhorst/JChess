@@ -385,5 +385,6 @@ public class Game implements Serializable{
 			this.board.placePiece(new Location(6, j), PieceType.PAWN, Player.WHITE);
 			this.board.placePiece(new Location(1, j), PieceType.PAWN, Player.BLACK);
 		}
+		return;
 	}
 }

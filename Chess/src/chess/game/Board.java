@@ -221,7 +221,7 @@ public class Board implements Serializable{
 	private transient List<BoardListener> listeners;
 	
 	public Board(){
-		this.pieces = new HashMap<>();
+		this.pieces = new HashMap<>(Board.SIZE*Board.SIZE, 1.0f);
 	}
 	
 	public void addBoardListener(BoardListener listener){

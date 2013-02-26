@@ -5,7 +5,7 @@ import java.util.List;
 
 import chess.game.Board.Move;
 
-public class Piece implements Serializable{
+public class Piece implements Serializable, Comparable<Piece>{
 	private Board board;
 	private int moveCount = 0;
 	private final Player player;
@@ -21,6 +21,9 @@ public class Piece implements Serializable{
 		this(PieceType.getPieceType(label.charAt(0)), Player.getPlayer(label.charAt(1)), board);
 	}
 	
+	/**
+	 * Checks if two Pieces are the same color and type. Does not consider if either piece has been moved.
+	 */
 	@Override
 	public boolean equals(Object obj){
 		if (this == obj){
@@ -47,7 +50,7 @@ public class Piece implements Serializable{
 	}
 	
 	public Location getLocation(){
-		return this.board == null? null : this.board.findPiece(this);
+		return this.board == null ? null : this.board.findPiece(this);
 	}
 	
 	public Player getOpponent(){
@@ -56,15 +59,19 @@ public class Piece implements Serializable{
 	
 	public Player getPlayer(){
 		return this.player;
-	}	
+	}
 	
 	public PieceType getType(){
 		return this.type;
 	}
 	
+	/**
+	 * Returns a value consistent with equals, but is not a very good identifier (since only a Piece's color is
+	 * guaranteed not to change during the lifetime of the object.)
+	 */
 	@Override
 	public int hashCode(){
-		return this.player.hashCode();
+		return this.player.ordinal();
 	}
 	
 	/**
@@ -131,5 +138,11 @@ public class Piece implements Serializable{
 	protected void setType(PieceType type){
 		this.type = type;
 		this.board.update(this.getLocation());
+	}
+	
+	@Override
+	public int compareTo(Piece p){
+		int playerDiff = this.player.ordinal() - p.player.ordinal();
+		return playerDiff != 0 ? playerDiff : this.type.ordinal() - p.type.ordinal();
 	}
 }

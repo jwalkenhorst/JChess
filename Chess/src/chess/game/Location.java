@@ -2,7 +2,7 @@ package chess.game;
 
 import java.io.Serializable;
 
-public class Location implements Serializable{
+public class Location implements Serializable, Comparable<Location>{
 	public static String getColumnLabel(int column){
 		return String.valueOf((char)(column + 'a'));
 	}
@@ -18,18 +18,14 @@ public class Location implements Serializable{
 		this.column = column;
 	}
 	
-	public Location(String label){
-		this(Board.SIZE - Integer.parseInt(label.substring(1)), Character.toLowerCase(label.charAt(0)) - 'a');
-	}
-	
 	@Override
 	public boolean equals(Object obj){
 		if (this == obj) return true;
 		if (obj == null) return false;
 		if (getClass() != obj.getClass()) return false;
 		Location other = (Location)obj;
-		if (this.column != other.column) return false;
 		if (this.row != other.row) return false;
+		if (this.column != other.column) return false;
 		return true;
 	}
 	
@@ -43,11 +39,7 @@ public class Location implements Serializable{
 	
 	@Override
 	public int hashCode(){
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + this.column;
-		result = prime * result + this.row;
-		return result;
+		return Board.SIZE * this.row + this.column;
 	}
 	
 	public boolean isLight(){
@@ -69,5 +61,11 @@ public class Location implements Serializable{
 	@Override
 	public String toString(){
 		return String.format("%s%s", this.getRowLabel(), this.getColumnLabel());
+	}
+	
+	@Override
+	public int compareTo(Location l){
+		int rowDif = this.row - l.row;
+		return (rowDif != 0) ? rowDif : this.column - l.column;
 	}
 }

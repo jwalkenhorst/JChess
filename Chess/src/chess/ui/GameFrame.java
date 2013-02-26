@@ -1,6 +1,7 @@
 package chess.ui;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Event;
 import java.awt.Image;
 import java.awt.Point;
@@ -25,7 +26,7 @@ import chess.game.Location;
 import chess.game.Piece;
 import chess.game.Player;
 
-public class GameView extends JFrame{
+public class GameFrame extends JFrame{
 	public static final boolean MULTI_VIEW = false;
 	
 	public static void main(String[] args){
@@ -37,13 +38,13 @@ public class GameView extends JFrame{
 		SwingUtilities.invokeLater(new Runnable(){
 			@Override
 			public void run(){
-				GameView white = new GameView();
+				GameFrame white = new GameFrame();
 				white.setVisible(true);
 				white.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 				white.pack();
 				if (MULTI_VIEW){
 					white.setStrictOrientation(true);
-					GameView black = new GameView(white.getGame(), Player.BLACK);
+					GameFrame black = new GameFrame(white.getGame(), Player.BLACK);
 					black.setVisible(true);
 					black.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 					black.setLocation(400, 0);
@@ -63,25 +64,23 @@ public class GameView extends JFrame{
 	protected Game game;
 	private JMenu gameMenu = null;
 	private JMenu helpMenu = null;
-	private JPanel jContentPane = null;
 	private JMenuBar menuBar = null;
 	private JMenuItem newMenuItem = null;
 	private Player orientation;
 	private JMenuItem saveAsMenuItem = null;
 	private JMenuItem saveMenuItem = null;
 	
-	public GameView(){
+	public GameFrame(){
 		this(null, Player.WHITE);
 	}
 	
-	public GameView(Game game, Player orientation){
+	public GameFrame(Game game, Player orientation){
 		super("Chess: " + orientation);
 		this.orientation = orientation;
 		this.game = game == null ? new Game() : game;
 		this.controller = new GameController(this);
 		this.setJMenuBar(getMainMenuBar());
-		this.setContentPane(getJContentPane());
-		
+		this.setContentPane(getBoardPanel());	
 	}
 	
 	public Game getGame(){
@@ -127,7 +126,7 @@ public class GameView extends JFrame{
 	 */
 	protected JDialog getAboutDialog(){
 		if (this.aboutDialog == null){
-			this.aboutDialog = new JDialog(GameView.this, true);
+			this.aboutDialog = new JDialog(GameFrame.this, true);
 			this.aboutDialog.setTitle("About");
 			this.aboutDialog.setContentPane(getAboutContentPane());
 		}
@@ -162,7 +161,7 @@ public class GameView extends JFrame{
 				public void actionPerformed(ActionEvent e){
 					JDialog about = getAboutDialog();
 					about.pack();
-					Point loc = GameView.this.getLocation();
+					Point loc = GameFrame.this.getLocation();
 					loc.translate(20, 20);
 					about.setLocation(loc);
 					about.setVisible(true);
@@ -252,19 +251,6 @@ public class GameView extends JFrame{
 	}
 	
 	/**
-	 * This method initializes jContentPane
-	 * 
-	 * @return javax.swing.JPanel
-	 */
-	private JPanel getJContentPane(){
-		if (this.jContentPane == null){
-			this.jContentPane = new JPanel(new BorderLayout());
-			this.jContentPane.add(getBoardPanel());
-		}
-		return this.jContentPane;
-	}
-	
-	/**
 	 * This method initializes menuBar
 	 * 
 	 * @return javax.swing.JMenuBar
@@ -300,7 +286,7 @@ public class GameView extends JFrame{
 			this.undoMenuItem.addActionListener(new ActionListener(){
 				@Override
 				public void actionPerformed(ActionEvent e){
-					GameView.this.game.undo();
+					GameFrame.this.game.undo();
 				}
 			});
 		}

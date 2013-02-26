@@ -5,9 +5,9 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
@@ -25,9 +25,9 @@ public class GameController{
 	private Location selLoc = null;
 	private Map<Location, Move> selMoves = null;
 	private boolean strictOrientation = false;
-	private final GameView view;
+	private final GameFrame view;
 	
-	public GameController(GameView app){
+	public GameController(GameFrame app){
 		this.view = app;
 		this.model = this.view.getGame();
 	}
@@ -72,7 +72,7 @@ public class GameController{
 				setSelection(loc, validMoves);
 			}
 		} else{
-			Move move = this.selMoves.get(loc);
+			Move move = loc != null ? this.selMoves.get(loc) : null;
 			if (move != null){
 				this.model.executeMove(move);
 				if (move.isPromotion()){
@@ -109,7 +109,8 @@ public class GameController{
 		Image pieceImage = this.view.getPieceImage(this.model.getPiece(loc));
 		BufferedImage scaled = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2 = scaled.createGraphics();
-		g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+							RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 		g2.drawImage(pieceImage, 0, 0, ICON_SIZE, ICON_SIZE, null);
 		ImageIcon icon = new ImageIcon(scaled);
 		return icon;
@@ -118,7 +119,7 @@ public class GameController{
 	private void setSelection(Location loc, List<Move> moves){
 		this.selLoc = loc;
 		if (this.selLoc != null){
-			this.selMoves = new HashMap<>();
+			this.selMoves = new TreeMap<>();
 			for (Move move : moves){
 				this.selMoves.put(move.getNewLocation(), move);
 			}

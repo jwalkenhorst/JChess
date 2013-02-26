@@ -33,4 +33,5 @@ public enum Player{
 		int position = (this.ordinal() + 1) % (players.length - 1);
 		return players[position];
 	}
+	
 }

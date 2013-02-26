@@ -1,7 +1,6 @@
 package chess.ui;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
 import java.awt.Event;
 import java.awt.Image;
 import java.awt.Point;
@@ -70,6 +69,8 @@ public class GameFrame extends JFrame{
 	private JMenuItem saveAsMenuItem = null;
 	private JMenuItem saveMenuItem = null;
 	
+	private JMenuItem undoMenuItem;
+	
 	public GameFrame(){
 		this(null, Player.WHITE);
 	}
@@ -99,22 +100,6 @@ public class GameFrame extends JFrame{
 		return this.controller.isStrictOrientation();
 	}
 	
-	public void lower(Location loc){
-		this.getBoardPanel().lower(loc);
-	}
-	
-	public void raise(Location loc){
-		this.getBoardPanel().raise(loc);
-	}
-	
-	public void setMoveLocations(Location[] moves){
-		this.getBoardPanel().setMoveLocations(moves);
-	}
-	
-	public void setSelection(Location loc){
-		this.getBoardPanel().setSelection(loc);
-	}
-	
 	public void setStrictOrientation(boolean strictOrientation){
 		this.controller.setStrictOrientation(strictOrientation);
 	}
@@ -131,6 +116,22 @@ public class GameFrame extends JFrame{
 			this.aboutDialog.setContentPane(getAboutContentPane());
 		}
 		return this.aboutDialog;
+	}
+	
+	protected void lower(Location loc){
+		this.getBoardPanel().lower(loc);
+	}
+	
+	protected void raise(Location loc){
+		this.getBoardPanel().raise(loc);
+	}
+	
+	protected void setMoveLocations(Location[] moves){
+		this.getBoardPanel().setMoveLocations(moves);
+	}
+	
+	protected void setSelection(Location loc){
+		this.getBoardPanel().setSelection(loc);
 	}
 	
 	/**
@@ -216,6 +217,7 @@ public class GameFrame extends JFrame{
 		return this.exitMenuItem;
 	}
 	
+	
 	/**
 	 * This method initializes jMenu
 	 * 
@@ -234,7 +236,6 @@ public class GameFrame extends JFrame{
 		}
 		return this.gameMenu;
 	}
-	
 	
 	/**
 	 * This method initializes jMenu
@@ -263,7 +264,7 @@ public class GameFrame extends JFrame{
 		}
 		return this.menuBar;
 	}
-	
+
 	/**
 	 * This method initializes newMenuItem
 	 * 
@@ -277,22 +278,6 @@ public class GameFrame extends JFrame{
 		}
 		return this.newMenuItem;
 	}
-
-	private JMenuItem undoMenuItem;
-	private JMenuItem getUndoMenuItem(){
-		if (this.undoMenuItem== null){
-			this.undoMenuItem = new JMenuItem("Undo Last Move");
-			this.undoMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Event.CTRL_MASK, true));
-			this.undoMenuItem.addActionListener(new ActionListener(){
-				@Override
-				public void actionPerformed(ActionEvent e){
-					GameFrame.this.game.undo();
-				}
-			});
-		}
-		return this.undoMenuItem;
-	}
-	
 	/**
 	 * This method initializes saveAsMenuItem
 	 * 
@@ -318,5 +303,19 @@ public class GameFrame extends JFrame{
 			this.saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Event.CTRL_MASK, true));
 		}
 		return this.saveMenuItem;
+	}
+	
+	private JMenuItem getUndoMenuItem(){
+		if (this.undoMenuItem== null){
+			this.undoMenuItem = new JMenuItem("Undo Last Move");
+			this.undoMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Event.CTRL_MASK, true));
+			this.undoMenuItem.addActionListener(new ActionListener(){
+				@Override
+				public void actionPerformed(ActionEvent e){
+					GameFrame.this.game.undo();
+				}
+			});
+		}
+		return this.undoMenuItem;
 	}
 }

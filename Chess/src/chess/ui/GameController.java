@@ -40,7 +40,7 @@ public class GameController{
 		return this.strictOrientation;
 	}
 	
-	public void preview(Location loc){
+	protected void preview(Location loc){
 		if (!acceptInput()) return;
 		if (this.selLoc == null){
 			if (this.previewing != null){
@@ -61,7 +61,7 @@ public class GameController{
 		}
 	}
 	
-	public void select(Location loc){
+	protected void select(Location loc){
 		if (!acceptInput()) return;
 		List<Move> validMoves = this.model.getMoves(loc);
 		if (this.selLoc == null){
@@ -97,7 +97,7 @@ public class GameController{
 		}
 	}
 	
-	public void setStrictOrientation(boolean strictOrientation){
+	protected void setStrictOrientation(boolean strictOrientation){
 		this.strictOrientation = strictOrientation;
 	}
 	

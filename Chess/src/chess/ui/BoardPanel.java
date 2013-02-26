@@ -158,33 +158,12 @@ public class BoardPanel extends SquarePanel{
 		return this.images.getPiece(piece);
 	}
 	
-	public void lower(Location loc){
+	protected void lower(Location loc){
 		this.pieces.get(loc).setRaised(false);
 	}
 	
-	public void raise(Location loc){
+	protected void raise(Location loc){
 		this.pieces.get(loc).setRaised(true);
-	}
-	
-	public void setMoveLocations(Location[] newMoves){
-		if (this.moveLocations != null) for (Location l : this.moveLocations){
-			this.pieces.get(l).resetColor();
-		}
-		this.moveLocations = newMoves;
-		if (this.moveLocations != null) for (Location l : this.moveLocations){
-			this.pieces.get(l).setCurColor(BoardColor.MOVES);
-		}
-	}
-	
-	public void setSelection(Location loc){
-		if (this.selection != null){
-			PiecePanel panel = this.pieces.get(this.selection);
-			panel.resetColor();
-		}
-		this.selection = loc;
-		if (this.selection != null){
-			this.pieces.get(loc).setCurColor(BoardColor.SELECTED);
-		}
 	}
 	
 	protected void setBlackKingLoc(Location blackKingLoc){
@@ -198,6 +177,27 @@ public class BoardPanel extends SquarePanel{
 		Font f = new Font(Font.SANS_SERIF, Font.PLAIN, dim / 16);
 		for (JLabel label : this.labels){
 			label.setFont(f);
+		}
+	}
+	
+	protected void setMoveLocations(Location[] newMoves){
+		if (this.moveLocations != null) for (Location l : this.moveLocations){
+			this.pieces.get(l).resetColor();
+		}
+		this.moveLocations = newMoves;
+		if (this.moveLocations != null) for (Location l : this.moveLocations){
+			this.pieces.get(l).setCurColor(BoardColor.MOVES);
+		}
+	}
+	
+	protected void setSelection(Location loc){
+		if (this.selection != null){
+			PiecePanel panel = this.pieces.get(this.selection);
+			panel.resetColor();
+		}
+		this.selection = loc;
+		if (this.selection != null){
+			this.pieces.get(loc).setCurColor(BoardColor.SELECTED);
 		}
 	}
 	

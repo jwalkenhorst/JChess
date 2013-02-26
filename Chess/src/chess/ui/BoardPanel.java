@@ -25,6 +25,7 @@ import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import chess.game.Board;
@@ -181,12 +182,12 @@ public class BoardPanel extends SquarePanel{
 	}
 	
 	protected void setMoveLocations(Location[] newMoves){
-		if (this.moveLocations != null) for (Location l : this.moveLocations){
-			this.pieces.get(l).resetColor();
+		if (this.moveLocations != null) for (Location loc : this.moveLocations){
+			this.pieces.get(loc).resetColor();
 		}
 		this.moveLocations = newMoves;
-		if (this.moveLocations != null) for (Location l : this.moveLocations){
-			this.pieces.get(l).setCurColor(BoardColor.MOVES);
+		if (this.moveLocations != null) for (Location loc : this.moveLocations){
+			this.pieces.get(loc).setCurColor(BoardColor.MOVES);
 		}
 	}
 	
@@ -231,31 +232,29 @@ public class BoardPanel extends SquarePanel{
 		this.game.addPropertyChangeListener("whiteCheck", new PropertyChangeListener(){
 			@Override
 			public void propertyChange(PropertyChangeEvent evt){
-				//System.out.println(evt);
-				BoardPanel.this.pieces.get(BoardPanel.this.whiteKingLoc).resetColor();
+				BoardPanel.this.resetColor(BoardPanel.this.whiteKingLoc);
 			}
 		});
 		this.game.addPropertyChangeListener("blackCheck", new PropertyChangeListener(){
 			@Override
 			public void propertyChange(PropertyChangeEvent evt){
-				//System.out.println(evt);
-				BoardPanel.this.pieces.get(BoardPanel.this.blackKingLoc).resetColor();
+				BoardPanel.this.resetColor(BoardPanel.this.blackKingLoc);
 			}
 		});
 		this.game.addBoardListener(new BoardListener(){
 			@Override
 			public void boardChanged(BoardChangedEvent e){
-				if (e.getLocations() == null) BoardPanel.this.repaint();
-				else for (Location l : e.getLocations()){
-					Piece piece = BoardPanel.this.game.getPiece(l);
-					if (BoardPanel.this.game.getBlackKing().equals(piece)){
-						setBlackKingLoc(l);
-					} else if (BoardPanel.this.game.getWhiteKing().equals(piece)){
-						setWhiteKingLoc(l);
-					}
-					BoardPanel.this.pieces.get(l).repaint();
+				final Location[] changes = e.getLocations();
+				if (SwingUtilities.isEventDispatchThread()){
+					updateBoard(changes);
+				} else{
+					SwingUtilities.invokeLater(new Runnable(){
+						@Override
+						public void run(){
+							updateBoard(changes);
+						}
+					});
 				}
-				BoardPanel.this.controller.select(null);
 			}
 		});
 	}
@@ -309,5 +308,32 @@ public class BoardPanel extends SquarePanel{
 			this.labels.add(colLabel);
 			this.add(colLabel);
 		}
+	}
+	
+	private void resetColor(final Location location){
+		if (SwingUtilities.isEventDispatchThread()){
+			this.pieces.get(location).resetColor();
+		} else{
+			SwingUtilities.invokeLater(new Runnable(){
+				@Override
+				public void run(){
+					BoardPanel.this.pieces.get(location).resetColor();
+				}
+			});
+		}
+	}
+	
+	private void updateBoard(Location[] changes){
+		if (changes == null) BoardPanel.this.repaint();
+		else for (Location loc : changes){
+			Piece piece = BoardPanel.this.game.getPiece(loc);
+			if (BoardPanel.this.game.getBlackKing().equals(piece)){
+				setBlackKingLoc(loc);
+			} else if (BoardPanel.this.game.getWhiteKing().equals(piece)){
+				setWhiteKingLoc(loc);
+			}
+			BoardPanel.this.pieces.get(loc).repaint();
+		}
+		BoardPanel.this.controller.select(null);
 	}
 }

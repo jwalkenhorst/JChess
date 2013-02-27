@@ -48,6 +48,7 @@ public class GameFrame extends JFrame{
 					black.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 					black.setLocation(400, 0);
 					black.setStrictOrientation(true);
+					black.pack();
 				}
 			}
 		});

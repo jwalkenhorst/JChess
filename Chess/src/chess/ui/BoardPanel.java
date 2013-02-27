@@ -16,6 +16,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -248,12 +249,16 @@ public class BoardPanel extends SquarePanel{
 				if (SwingUtilities.isEventDispatchThread()){
 					updateBoard(changes);
 				} else{
-					SwingUtilities.invokeLater(new Runnable(){
-						@Override
-						public void run(){
-							updateBoard(changes);
-						}
-					});
+					try{
+						SwingUtilities.invokeAndWait(new Runnable(){
+							@Override
+							public void run(){
+								updateBoard(changes);
+							}
+						});
+					} catch (InvocationTargetException | InterruptedException e1){
+						e1.printStackTrace();
+					}
 				}
 			}
 		});
@@ -314,17 +319,21 @@ public class BoardPanel extends SquarePanel{
 		if (SwingUtilities.isEventDispatchThread()){
 			this.pieces.get(location).resetColor();
 		} else{
-			SwingUtilities.invokeLater(new Runnable(){
-				@Override
-				public void run(){
-					BoardPanel.this.pieces.get(location).resetColor();
-				}
-			});
+			try{
+				SwingUtilities.invokeAndWait(new Runnable(){
+					@Override
+					public void run(){
+						BoardPanel.this.pieces.get(location).resetColor();
+					}
+				});
+			} catch (InvocationTargetException | InterruptedException e){
+				e.printStackTrace();
+			}
 		}
 	}
 	
 	private void updateBoard(Location[] changes){
-		if (changes == null) BoardPanel.this.repaint();
+		if (changes == null || true) BoardPanel.this.repaint();
 		else for (Location loc : changes){
 			Piece piece = BoardPanel.this.game.getPiece(loc);
 			if (BoardPanel.this.game.getBlackKing().equals(piece)){

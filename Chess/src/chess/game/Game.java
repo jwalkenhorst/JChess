@@ -21,7 +21,7 @@ public class Game implements Serializable{
 	 * 
 	 * @author jwalkenhorst
 	 */
-	public interface GameCommand extends Serializable{
+	protected interface GameCommand extends Serializable{
 		/**
 		 * Performs this action
 		 */
@@ -37,7 +37,7 @@ public class Game implements Serializable{
 	 * 
 	 * @author jwalkenhorst
 	 */
-	public class MoveCommand implements GameCommand{
+	protected class MoveCommand implements GameCommand{
 		private boolean executed;
 		private Move move;
 		
@@ -68,18 +68,17 @@ public class Game implements Serializable{
 		
 		@Override
 		public String toString(){
-			// TODO a real implementation
-			return super.toString();
+			return move.toString()+(this.executed?'+':'-');
 		}
 		
 		@Override
 		public void undo(){
 			if (!this.executed) throw new IllegalStateException("Move not executed yet.");
-			Player moved = this.move.getMoving().getPlayer();
-			this.executed = false;
-			this.move.undo();
 			Game.this.promoting = null;
-			Game.this.setTurn(moved);
+			this.executed = false;			
+			Player movingPlayer = this.move.getMoving().getPlayer();
+			this.move.undo();
+			Game.this.setTurn(movingPlayer);
 		}
 	}
 	/**
@@ -87,7 +86,7 @@ public class Game implements Serializable{
 	 * 
 	 * @author jwalkenhorst
 	 */
-	public class PawnPromotionCommand implements GameCommand{
+	protected class PawnPromotionCommand implements GameCommand{
 		/**
 		 * The Command that caused this promotion
 		 */
@@ -127,7 +126,9 @@ public class Game implements Serializable{
 		@Override
 		public String toString(){
 			String moveDesc = this.previous.toString();
-			String result = moveDesc + " " + (this.promoted == null ? "?" : this.promoted.toString());
+			String result = moveDesc
+					+ " "
+					+ (this.promoted == null ? "?" : this.promoted.toString());
 			return result;
 		}
 		
@@ -142,6 +143,7 @@ public class Game implements Serializable{
 	}
 	
 	protected Board board;
+	protected boolean lastUndo = false;
 	protected Piece promoting;
 	private boolean blackCheck;
 	private Deque<GameCommand> commandHistory = new ArrayDeque<>();
@@ -181,14 +183,15 @@ public class Game implements Serializable{
 	}
 	
 	public void executeMove(Move move){
-		MoveCommand command = new MoveCommand(move);
-		command.execute();
+		GameCommand command = new MoveCommand(move);
 		this.commandHistory.addLast(command);
+		lastUndo = false;
+		command.execute();
 		this.propertyChange.firePropertyChange("history", null, getHistory());
 	}
 	
 	public List<Move> getAllCurrentMoves(){
-		if(!Player.getPlayers().contains(this.turn)) return Collections.emptyList();
+		if (!Player.getPlayers().contains(this.turn)) return Collections.emptyList();
 		List<Move> allMoves = new ArrayList<>();
 		for (Location loc : this.board.getPlayerLocations(this.turn)){
 			allMoves.addAll(getMoves(loc));
@@ -212,17 +215,17 @@ public class Game implements Serializable{
 	}
 	
 	/**
-	 * @return a list of locations that the piece at location may move to, or an empty list if it may not move or there is no piece there.
+	 * @return a list of locations that the piece at location may move to, or an empty list if it may not move or there
+	 *         is no piece there.
 	 */
 	public List<Move> getMoves(Location start){
 		Piece moving = this.board.getPiece(start);
 		List<Move> moves;
-		if (moving == null || moving.getPlayer()!= this.turn) moves = Collections.emptyList();
+		if (moving == null || moving.getPlayer() != this.turn) moves = Collections.emptyList();
 		else moves = moving.getMoves(start);
 		for (Iterator<Move> iterator = moves.iterator(); iterator.hasNext();){
 			Move move = iterator.next();
 			if (move.checksPlayer()) iterator.remove();
-			
 		}
 		return moves;
 	}
@@ -262,6 +265,10 @@ public class Game implements Serializable{
 		}
 	}
 	
+	public boolean isLastUndo(){
+		return this.lastUndo;
+	}
+	
 	public boolean isPromoting(){
 		return this.promoting != null;
 	}
@@ -280,6 +287,7 @@ public class Game implements Serializable{
 		GameCommand lastCommand = this.commandHistory.pollLast();
 		lastCommand = new PawnPromotionCommand(lastCommand, promotion);
 		lastCommand.execute();
+		lastUndo = false;
 		this.commandHistory.addLast(lastCommand);
 		this.propertyChange.firePropertyChange("history", null, getHistory());
 	}
@@ -302,14 +310,16 @@ public class Game implements Serializable{
 	public void undo(){
 		GameCommand lastCommand = this.commandHistory.pollLast();
 		if (lastCommand != null){
+			lastUndo = true;
 			lastCommand.undo();
+			this.propertyChange.firePropertyChange("history", null, getHistory());
 		}
 	}
 	
 	protected void nextTurn(){
 		this.setTurn(this.turn.next());
 	}
-
+	
 	protected void setTurn(Player next){
 		Player current = this.turn;
 		if (current != Player.GAME_OVER){
@@ -339,7 +349,8 @@ public class Game implements Serializable{
 		this.propertyChange.firePropertyChange("turn", current, this.turn);
 	}
 	
-	private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException{
+	private void readObject(java.io.ObjectInputStream in)
+			throws IOException, ClassNotFoundException{
 		in.defaultReadObject();
 		this.propertyChange = new PropertyChangeSupport(this);
 	}

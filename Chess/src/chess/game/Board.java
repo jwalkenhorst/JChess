@@ -1,6 +1,7 @@
 package chess.game;
 
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -38,6 +39,11 @@ public class Board implements Serializable{
 		private Piece captured;
 		private Piece moving;
 		private Location oldLocation, newLocation;
+		@Override
+		public String toString(){
+			return oldLocation + "->" + newLocation ;
+		}
+
 		private Move previous;
 		private boolean promotion;
 		

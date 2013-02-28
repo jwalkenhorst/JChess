@@ -333,7 +333,7 @@ public class BoardPanel extends SquarePanel{
 	}
 	
 	private void updateBoard(Location[] changes){
-		if (changes == null || true) BoardPanel.this.repaint();
+		if (changes == null) BoardPanel.this.repaint();
 		else for (Location loc : changes){
 			Piece piece = BoardPanel.this.game.getPiece(loc);
 			if (BoardPanel.this.game.getBlackKing().equals(piece)){

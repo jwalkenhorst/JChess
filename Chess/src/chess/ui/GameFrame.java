@@ -22,36 +22,49 @@ import javax.swing.UIManager;
 
 import chess.game.Game;
 import chess.game.Location;
+import chess.game.Mover;
 import chess.game.Piece;
 import chess.game.Player;
+import chess.game.ai.RandomMover;
 
 public class GameFrame extends JFrame{
 	public static final boolean MULTI_VIEW = false;
+	public static final boolean AI = true;
 	
 	public static void main(String[] args){
-		try{
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception e){
-			//Use default look and feel
-		}
 		SwingUtilities.invokeLater(new Runnable(){
 			@Override
 			public void run(){
+				try{
+					UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+				} catch (Exception e){
+					//Use default look and feel
+				}
 				GameFrame white = new GameFrame();
-				white.setVisible(true);
 				white.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 				white.pack();
+				white.setVisible(true);
+				Game game = white.getGame();
 				if (MULTI_VIEW){
 					white.setStrictOrientation(true);
-					GameFrame black = new GameFrame(white.getGame(), Player.BLACK);
-					black.setVisible(true);
+					GameFrame black = new GameFrame(game, Player.BLACK);
 					black.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-					black.setLocation(400, 0);
+					black.setLocation(500, 0);
 					black.setStrictOrientation(true);
 					black.pack();
+					black.setVisible(true);
+				}
+				if (AI){
+					Mover mover = new RandomMover(game, false);
+					white.setMover(Player.BLACK, mover);
 				}
 			}
 		});
+	}
+	
+	public void setMover(Player player, Mover mover){
+		this.setTitle(this.getTitle()+" vs "+mover);
+		this.controller.setMover(player, mover);
 	}
 	
 	private JPanel aboutContentPane = null;
@@ -69,7 +82,6 @@ public class GameFrame extends JFrame{
 	private Player orientation;
 	private JMenuItem saveAsMenuItem = null;
 	private JMenuItem saveMenuItem = null;
-	
 	private JMenuItem undoMenuItem;
 	
 	public GameFrame(){
@@ -82,7 +94,7 @@ public class GameFrame extends JFrame{
 		this.game = game == null ? new Game() : game;
 		this.controller = new GameController(this);
 		this.setJMenuBar(getMainMenuBar());
-		this.setContentPane(getBoardPanel());	
+		this.setContentPane(getBoardPanel());
 	}
 	
 	public Game getGame(){
@@ -218,7 +230,6 @@ public class GameFrame extends JFrame{
 		return this.exitMenuItem;
 	}
 	
-	
 	/**
 	 * This method initializes jMenu
 	 * 
@@ -265,7 +276,7 @@ public class GameFrame extends JFrame{
 		}
 		return this.menuBar;
 	}
-
+	
 	/**
 	 * This method initializes newMenuItem
 	 * 
@@ -275,10 +286,13 @@ public class GameFrame extends JFrame{
 		if (this.newMenuItem == null){
 			this.newMenuItem = new JMenuItem();
 			this.newMenuItem.setText("New");
-			this.newMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, Event.CTRL_MASK, true));
+			this.newMenuItem.setAccelerator(KeyStroke.getKeyStroke(	KeyEvent.VK_N,
+																	Event.CTRL_MASK,
+																	true));
 		}
 		return this.newMenuItem;
 	}
+	
 	/**
 	 * This method initializes saveAsMenuItem
 	 * 
@@ -301,15 +315,19 @@ public class GameFrame extends JFrame{
 		if (this.saveMenuItem == null){
 			this.saveMenuItem = new JMenuItem();
 			this.saveMenuItem.setText("Save");
-			this.saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, Event.CTRL_MASK, true));
+			this.saveMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S,
+																	Event.CTRL_MASK,
+																	true));
 		}
 		return this.saveMenuItem;
 	}
 	
 	private JMenuItem getUndoMenuItem(){
-		if (this.undoMenuItem== null){
+		if (this.undoMenuItem == null){
 			this.undoMenuItem = new JMenuItem("Undo Last Move");
-			this.undoMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z, Event.CTRL_MASK, true));
+			this.undoMenuItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Z,
+																	Event.CTRL_MASK,
+																	true));
 			this.undoMenuItem.addActionListener(new ActionListener(){
 				@Override
 				public void actionPerformed(ActionEvent e){

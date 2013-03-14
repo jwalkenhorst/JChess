@@ -6,10 +6,17 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import javax.swing.JOptionPane;
 
@@ -52,7 +59,7 @@ public class Game implements Serializable{
 			if (isPromoting()) throw new IllegalStateException("No moves allowed during a promotion");
 			this.executed = true;
 			this.move.execute();
-			if (this.move.isPromotion()){
+			if (this.move.promotesPiece()){
 				Game.this.promoting = this.move.getMoving();
 			} else{
 				nextTurn();
@@ -68,14 +75,14 @@ public class Game implements Serializable{
 		
 		@Override
 		public String toString(){
-			return move.toString()+(this.executed?'+':'-');
+			return this.move.toString() + (this.executed ? '+' : '-');
 		}
 		
 		@Override
 		public void undo(){
 			if (!this.executed) throw new IllegalStateException("Move not executed yet.");
 			Game.this.promoting = null;
-			this.executed = false;			
+			this.executed = false;
 			Player movingPlayer = this.move.getMoving().getPlayer();
 			this.move.undo();
 			Game.this.setTurn(movingPlayer);
@@ -143,10 +150,12 @@ public class Game implements Serializable{
 	}
 	
 	protected Board board;
-	protected boolean lastUndo = false;
 	protected Piece promoting;
 	private boolean blackCheck;
 	private Deque<GameCommand> commandHistory = new ArrayDeque<>();
+	private Future<Move> lastMovement;
+	private ExecutorService moveExecutor = Executors.newSingleThreadExecutor();
+	private Map<Player, Mover> movers = new EnumMap<>(Player.class);
 	private transient PropertyChangeSupport propertyChange = new PropertyChangeSupport(this);
 	private Player turn;
 	private boolean whiteCheck;
@@ -182,14 +191,26 @@ public class Game implements Serializable{
 		this.propertyChange.addPropertyChangeListener(propertyName, listener);
 	}
 	
-	public void executeMove(Move move){
-		GameCommand command = new MoveCommand(move);
-		this.commandHistory.addLast(command);
-		lastUndo = false;
-		command.execute();
-		this.propertyChange.firePropertyChange("history", null, getHistory());
+	public boolean canDeclareStalemate(){
+		//System.out.println(this.board.getNonCaptureMoves());
+		return this.board.getNonCaptureMoves() >= 49;
 	}
 	
+	protected Player playerStalemate = null;
+	public void declareStalemate(){
+		if (!canDeclareStalemate()) throw new IllegalStateException("Stalemate not available now");
+		this.playerStalemate = this.turn;
+	}
+	
+	public void executeMove(Move move){
+		//TODO: strict turn enforcement
+		GameCommand command = new MoveCommand(move);
+		this.commandHistory.addLast(command);
+		command.execute();
+		this.propertyChange.firePropertyChange("history", null, getHistory());
+		executeMover();
+	}
+
 	public List<Move> getAllCurrentMoves(){
 		if (!Player.getPlayers().contains(this.turn)) return Collections.emptyList();
 		List<Move> allMoves = new ArrayList<>();
@@ -212,6 +233,10 @@ public class Game implements Serializable{
 			commands.add(c.toString());
 		}
 		return commands;
+	}
+	
+	public Mover getMover(Player p){
+		return movers.get(p);
 	}
 	
 	/**
@@ -265,10 +290,6 @@ public class Game implements Serializable{
 		}
 	}
 	
-	public boolean isLastUndo(){
-		return this.lastUndo;
-	}
-	
 	public boolean isPromoting(){
 		return this.promoting != null;
 	}
@@ -287,7 +308,6 @@ public class Game implements Serializable{
 		GameCommand lastCommand = this.commandHistory.pollLast();
 		lastCommand = new PawnPromotionCommand(lastCommand, promotion);
 		lastCommand.execute();
-		lastUndo = false;
 		this.commandHistory.addLast(lastCommand);
 		this.propertyChange.firePropertyChange("history", null, getHistory());
 	}
@@ -304,20 +324,43 @@ public class Game implements Serializable{
 		this.propertyChange.removePropertyChangeListener(propertyName, listener);
 	}
 	
+	public void setMover(final Player player, final Mover mover){
+		if (player == Player.GAME_OVER){
+			throw new IllegalArgumentException("May not assign mover to " + Player.GAME_OVER);
+		}
+		this.movers.put(player, mover);
+		executeMover();
+	}
+	
+	public boolean turnHasMover(){
+		return getMover(this.getTurn()) != null;
+	}
+	
 	/**
 	 * Unperforms the last action
 	 */
 	public void undo(){
-		GameCommand lastCommand = this.commandHistory.pollLast();
-		if (lastCommand != null){
-			lastUndo = true;
-			lastCommand.undo();
-			this.propertyChange.firePropertyChange("history", null, getHistory());
-		}
+		GameCommand lastCommand;
+		Mover mover;
+		do{
+			lastCommand = this.commandHistory.pollLast();
+			if (lastCommand != null){
+				lastCommand.undo();
+				this.propertyChange.firePropertyChange("history", null, getHistory());
+			}
+			mover = this.movers.get(this.turn);
+			
+		}while(lastCommand != null && mover != null && mover.allowUndo());
+		if (lastCommand == null) executeMover();
 	}
 	
 	protected void nextTurn(){
-		this.setTurn(this.turn.next());
+		if (playerStalemate != null && canDeclareStalemate()){
+			this.setTurn(Player.GAME_OVER);
+		}else{	
+			playerStalemate = null;
+			this.setTurn(this.turn.next());
+		}
 	}
 	
 	protected void setTurn(Player next){
@@ -332,21 +375,34 @@ public class Game implements Serializable{
 				setCheck(p, this.board.isCheck(p));
 			}
 		}
-		boolean nextPlayerCheck = this.board.isCheck(next);
-		setCheck(next, nextPlayerCheck);
 		this.turn = next;
+		boolean nextPlayerCheck = false;
+		if (Player.getPlayers().contains(next)){
+			nextPlayerCheck = this.board.isCheck(next);
+			setCheck(next, nextPlayerCheck);
+		}
 		List<Move> allMoves = getAllCurrentMoves();
-		if (allMoves.isEmpty()){
+		if (allMoves.isEmpty() && !isPromoting()){
 			this.turn = Player.GAME_OVER;
 			if (nextPlayerCheck){
 				//TODO: checkmate - no model logic for handling checkmate, no end-of-game events aside from the player changing to GAME_OVER 
-				JOptionPane.showMessageDialog(null, "Checkmate");
+				JOptionPane.showMessageDialog(null, "Checkmate - "+current);
 			} else{
 				//TODO: stalemate  - no model logic for handling stalemate, no end-of-game events aside from the player changing to GAME_OVER
-				JOptionPane.showMessageDialog(null, "Stalemate");
+				String message ;
+				if (playerStalemate== null) message = "Stalemate: no possible move for "+next;
+				else message = "Stalemate - "+playerStalemate;
+				JOptionPane.showMessageDialog(null, message);
 			}
 		}
 		this.propertyChange.firePropertyChange("turn", current, this.turn);
+	}
+	
+	private void executeMover(){
+		Mover mover = this.movers.get(this.turn);
+		if (mover != null){
+			this.lastMovement = this.moveExecutor.submit(mover);
+		}
 	}
 	
 	private void readObject(java.io.ObjectInputStream in)

@@ -1,7 +1,6 @@
 package chess.game;
 
 import java.io.Serializable;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -30,101 +29,38 @@ public class Board implements Serializable{
 		return true;
 	}
 	
-	/**
-	 * Represents the result of moving a piece.
-	 * 
-	 * @author jwalkenhorst
-	 */
-	public class Move implements Serializable{
-		private Piece captured;
-		private Piece moving;
-		private Location oldLocation, newLocation;
-		@Override
-		public String toString(){
-			return oldLocation + "->" + newLocation ;
-		}
-
-		private Move previous;
-		private boolean promotion;
-		
-		protected Move(Location oldLocation, Location newLocation){
-			if (!oldLocation.isOnBoard()) throw new OffBoardException(oldLocation);
-			if (!newLocation.isOnBoard()) throw new OffBoardException(newLocation);
-			this.oldLocation = oldLocation;
-			this.newLocation = newLocation;
-		}
+	public abstract class Move implements Serializable{
+		public abstract boolean checksPlayer();
 		
 		/**
-		 * @return The piece captured by the result of this move, or null if no capture occurred.
+		 * @return The piece captured after executing this move. Null if no capture did/will occurr.
 		 */
-		public Piece getCaptured(){
-			return this.captured;
-		}
+		public abstract Piece getCaptured();
 		
 		/**
-		 * @return The piece that was moved, or null if this Move has not been executed.
+		 * @return The piece that will be or has moved.
 		 */
-		public Piece getMoving(){
-			return this.moving;
-		}
+		public abstract Piece getMoving();
 		
-		public Location getNewLocation(){
-			return this.newLocation;
-		}
+		public abstract Location getNewLocation();
 		
-		public Location getOldLocation(){
-			return this.oldLocation;
-		}
+		public abstract Location getOldLocation();
 		
 		/**
-		 * @return true if this Move has resulted in a promotion, false otherwise or if this Move has not been executed.
+		 * @return if this Move requires a piece to need promotion.
 		 */
-		public boolean isPromotion(){
-			return this.promotion;
-		}
+		public abstract boolean promotesPiece();
 		
-		protected boolean checksPlayer(){
-			Board.this.notifyListeners = false;
-			execute();
-			boolean check = Board.this.isCheck(this.moving.getPlayer());
-			undo();
-			Board.this.notifyListeners = true;
-			return check;
-		}
+		protected abstract void execute();
 		
-		protected void execute(){
-			if (this.moving != null) throw new IllegalStateException("Move already executed");
-			this.moving = Board.this.pieces.remove(this.oldLocation);
-			if (this.moving == null) throw new EmptyLocationException(this.oldLocation);
-			this.captured = Board.this.pieces.put(this.newLocation, this.moving);
-			if (this.newLocation.row == 0 || this.newLocation.row == Board.SIZE - 1){
-				if (this.moving.getType() == PieceType.PAWN) this.promotion = true;
-			}
-			this.moving.incrementMoves();
-			this.previous = Board.this.last;
-			Board.this.last = this;
-			Board.this.fireBoardChanged(new Location[]{this.oldLocation, this.newLocation});
-		}
-		
-		protected void undo(){
-			if (this.moving == null) throw new IllegalStateException("Move not executed");
-			this.moving.decrementMoves();
-			this.promotion = false;
-			if (this.captured == null) Board.this.pieces.remove(this.newLocation);
-			else Board.this.pieces.put(this.newLocation, this.captured);
-			Board.this.pieces.put(this.oldLocation, this.moving);
-			this.moving = null;
-			Board.this.last = this.previous;
-			this.previous = null;
-			Board.this.fireBoardChanged(new Location[]{this.oldLocation, this.newLocation});
-		}
+		protected abstract void undo();
 	}
 	/**
 	 * A snapshot of where a Piece is located when this object is created.
 	 * 
 	 * @author jwalkenhorst
 	 */
-	protected class PieceLocation implements Serializable{
+	protected static class PieceLocation implements Serializable{
 		private final Location location;
 		private final Piece piece;
 		
@@ -145,7 +81,6 @@ public class Board implements Serializable{
 			if (obj == null) return false;
 			if (getClass() != obj.getClass()) return false;
 			PieceLocation other = (PieceLocation)obj;
-			if (!getOuterType().equals(other.getOuterType())) return false;
 			if (this.location == null){
 				if (other.location != null) return false;
 			} else if (!this.location.equals(other.location)) return false;
@@ -163,7 +98,6 @@ public class Board implements Serializable{
 		public int hashCode(){
 			final int prime = 31;
 			int result = 1;
-			result = prime * result + getOuterType().hashCode();
 			result = prime * result + ((this.location == null) ? 0 : this.location.hashCode());
 			result = prime * result + ((this.piece == null) ? 0 : this.piece.hashCode());
 			return result;
@@ -172,19 +106,21 @@ public class Board implements Serializable{
 		protected boolean hasMoveTo(Location end){
 			return this.piece.hasMove(this.location, end);
 		}
-		
-		private Board getOuterType(){
-			return Board.this;
-		}
 	}
-	private class DoubleMove extends Move{
+	private class DoubleMove extends SingleMove{
 		private Piece secondMoving, secondCapture;
 		private Location secondOld, secondNew;
 		
-		protected DoubleMove(Location oldLocation, Location newLocation, Location secondOld, Location secondNew){
+		private DoubleMove(Location oldLocation, Location newLocation, Location secondOld,
+				Location secondNew){
 			super(oldLocation, newLocation);
 			this.secondOld = secondOld;
 			this.secondNew = secondNew;
+		}
+		
+		@Override
+		public String toString(){
+			return super.toString() + ", " + this.secondOld + "->" + this.secondNew;
 		}
 		
 		@Override
@@ -219,15 +155,114 @@ public class Board implements Serializable{
 			super.undo();
 		}
 	}
+	/**
+	 * Represents the result of moving a piece.
+	 * 
+	 * @author jwalkenhorst
+	 */
+	private class SingleMove extends Move{
+		int prevNonCaptureMoves;
+		private Piece captured;
+		private boolean executed = false;
+		private Piece moving;
+		private Location oldLocation, newLocation;
+		private Move previous;
+		
+		private boolean promotion;
+		
+		private SingleMove(Location oldLocation, Location newLocation){
+			if (!oldLocation.isOnBoard()) throw new OffBoardException(oldLocation);
+			if (!newLocation.isOnBoard()) throw new OffBoardException(newLocation);
+			Piece m = Board.this.pieces.get(oldLocation);
+			if (m == null){
+				throw new EmptyLocationException(oldLocation);
+			}
+			this.moving = m;
+			this.oldLocation = oldLocation;
+			this.newLocation = newLocation;
+			this.promotion = PieceType.promotePieceAt(newLocation, m);
+			this.captured = Board.this.pieces.get(this.newLocation);
+		}
+		
+		public boolean checksPlayer(){
+			Board.this.notifyListeners = false;
+			execute();
+			boolean check = Board.this.isCheck(this.moving.getPlayer());
+			undo();
+			Board.this.notifyListeners = true;
+			return check;
+		}
+		
+		/**
+		 * @return The piece captured after executing this move. Null if no capture did/will occurr.
+		 */
+		public Piece getCaptured(){
+			return this.captured;
+		}
+		
+		/**
+		 * @return The piece that will be or has moved.
+		 */
+		public Piece getMoving(){
+			return this.moving;
+		}
+		
+		public Location getNewLocation(){
+			return this.newLocation;
+		}
+		
+		public Location getOldLocation(){
+			return this.oldLocation;
+		}
+		
+		/**
+		 * @return if this Move requires a piece to need promotion.
+		 */
+		public boolean promotesPiece(){
+			return this.promotion;
+		}
+		
+		@Override
+		public String toString(){
+			return this.oldLocation + "->" + this.newLocation;
+		}
+		
+		protected void execute(){
+			if (this.executed) throw new IllegalStateException("Move already executed");
+			this.executed = true;
+			this.moving = Board.this.pieces.remove(this.oldLocation);
+			if (this.moving == null) throw new EmptyLocationException(this.oldLocation);
+			this.captured = Board.this.pieces.put(this.newLocation, this.moving);
+			prevNonCaptureMoves = nonCaptureMoves;
+			if (this.captured == null) nonCaptureMoves++;
+			else nonCaptureMoves = 0;
+			this.moving.incrementMoves();
+			this.previous = Board.this.last;
+			Board.this.last = this;
+			Board.this.fireBoardChanged(new Location[]{this.oldLocation, this.newLocation});
+		}
+		
+		protected void undo(){
+			if (!this.executed) throw new IllegalStateException("Move not executed");
+			this.moving.decrementMoves();
+			nonCaptureMoves = prevNonCaptureMoves;
+			if (this.captured == null) Board.this.pieces.remove(this.newLocation);
+			else Board.this.pieces.put(this.newLocation, this.captured);
+			Board.this.pieces.put(this.oldLocation, this.moving);
+			this.executed = false;
+			Board.this.last = this.previous;
+			Board.this.fireBoardChanged(new Location[]{this.oldLocation, this.newLocation});
+		}
+	}
 	
 	protected Move last;
-	protected Map<Location, Piece> pieces;
+	protected int nonCaptureMoves;
 	protected boolean notifyListeners = true;
+	protected Map<Location, Piece> pieces;
 	private Piece blackKing, whiteKing;
 	private transient List<BoardListener> listeners;
-	
 	public Board(){
-		this.pieces = new HashMap<>(Board.SIZE*Board.SIZE, 1.0f);
+		this.pieces = new HashMap<>(Board.SIZE * Board.SIZE, 1.0f);
 	}
 	
 	public void addBoardListener(BoardListener listener){
@@ -252,8 +287,8 @@ public class Board implements Serializable{
 		return this.blackKing;
 	}
 	
-	public Move getLast(){
-		return this.last;
+	public int getNonCaptureMoves(){
+		return this.nonCaptureMoves;
 	}
 	
 	/**
@@ -320,6 +355,10 @@ public class Board implements Serializable{
 			l.boardChanged(evt);
 	}
 	
+	protected Move getLast(){
+		return this.last;
+	}
+	
 	/**
 	 * @return an unexecuted Move that moves the piece at oldLocation to newLocation
 	 * @throws OffBoardException
@@ -328,10 +367,11 @@ public class Board implements Serializable{
 	 *             if oldLocation is not occupied
 	 */
 	protected Move makeMove(Location oldLocation, Location newLocation){
-		return new Move(oldLocation, newLocation);
+		return new SingleMove(oldLocation, newLocation);
 	}
 	
-	protected Move makeMove(Location oldLocation, Location newLocation, Location secondOld, Location secondNew){
+	protected Move makeMove(Location oldLocation, Location newLocation, Location secondOld,
+			Location secondNew){
 		return new DoubleMove(oldLocation, newLocation, secondOld, secondNew);
 	}
 	

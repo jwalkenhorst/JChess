@@ -34,7 +34,7 @@ public enum PieceType{
 		
 		@Override
 		boolean hasMove(Piece piece, Location from, Location to){
-			if (Math.abs(from.row-to.row) > 1) return false;
+			if (Math.abs(from.row - to.row) > 1) return false;
 			return super.hasMove(piece, from, to);
 		}
 		
@@ -60,7 +60,10 @@ public enum PieceType{
 			if (rook.equals(atNext) && !atNext.isMoved()){
 				Location passing = location.move(dir);
 				Move passingMove = board.makeMove(location, passing);
-				if(!passingMove.checksPlayer()) return board.makeMove(location, passing.move(dir), next, passing);
+				if (!passingMove.checksPlayer()) return board.makeMove(	location,
+																		passing.move(dir),
+																		next,
+																		passing);
 			}
 			return null;
 		}
@@ -75,7 +78,10 @@ public enum PieceType{
 	BISHOP{
 		@Override
 		List<Location> getLocations(Piece bishop, Location location){
-			Iterable<Direction> directions = EnumSet.of(Direction.NORTHWEST, Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST);
+			Iterable<Direction> directions = EnumSet.of(Direction.NORTHWEST,
+														Direction.NORTHEAST,
+														Direction.SOUTHEAST,
+														Direction.SOUTHWEST);
 			List<Location> locs = movesTowards(bishop, location, directions);
 			return locs;
 		}
@@ -101,7 +107,10 @@ public enum PieceType{
 	ROOK{
 		@Override
 		List<Location> getLocations(Piece rook, Location location){
-			Iterable<Direction> directions = EnumSet.of(Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST);
+			Iterable<Direction> directions = EnumSet.of(Direction.NORTH,
+														Direction.EAST,
+														Direction.SOUTH,
+														Direction.WEST);
 			List<Location> moves = movesTowards(rook, location, directions);
 			return moves;
 		}
@@ -180,7 +189,12 @@ public enum PieceType{
 		return EnumSet.complementOf(EnumSet.of(PieceType.KING, PieceType.PAWN));
 	}
 	
-	static List<Location> movesTowards(Piece piece, Location location, Iterable<Direction> directions){
+	public static boolean promotePieceAt(Location loc, Piece piece){
+		return (piece.getType() == PieceType.PAWN && (loc.row == 0 || loc.row == Board.SIZE - 1));
+	}
+	
+	static List<Location> movesTowards(Piece piece, Location location,
+			Iterable<Direction> directions){
 		List<Location> moves = new LinkedList<>();
 		for (Direction d : directions){
 			Location next = location.move(d);
@@ -211,7 +225,7 @@ public enum PieceType{
 		List<Location> locs = getLocations(piece, location);
 		List<Move> moves = new LinkedList<>();
 		Board board = piece.getBoard();
-		for (Location l : locs){			
+		for (Location l : locs){
 			Move move = board.makeMove(location, l);
 			moves.add(move);
 		}
@@ -220,7 +234,7 @@ public enum PieceType{
 	
 	boolean hasMove(Piece piece, Location from, Location to){
 		List<Move> moves = getMoves(piece, from);
-		for(Move move : moves){
+		for (Move move : moves){
 			if (move.getNewLocation().equals(to)) return true;
 		}
 		return false;

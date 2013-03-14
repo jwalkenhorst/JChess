@@ -22,9 +22,9 @@ import javax.swing.UIManager;
 
 import chess.game.Game;
 import chess.game.Location;
-import chess.game.Mover;
 import chess.game.Piece;
 import chess.game.Player;
+import chess.game.ai.RandomCapture;
 import chess.game.ai.RandomMover;
 
 public class GameFrame extends JFrame{
@@ -55,16 +55,11 @@ public class GameFrame extends JFrame{
 					black.setVisible(true);
 				}
 				if (AI){
-					Mover mover = new RandomMover(game, false);
-					white.setMover(Player.BLACK, mover);
+					game.setMover(Player.BLACK, new RandomMover(game));
+					game.setMover(Player.WHITE, new RandomCapture(game));
 				}
 			}
 		});
-	}
-	
-	public void setMover(Player player, Mover mover){
-		this.setTitle(this.getTitle()+" vs "+mover);
-		this.controller.setMover(player, mover);
 	}
 	
 	private JPanel aboutContentPane = null;
@@ -331,7 +326,7 @@ public class GameFrame extends JFrame{
 			this.undoMenuItem.addActionListener(new ActionListener(){
 				@Override
 				public void actionPerformed(ActionEvent e){
-					GameFrame.this.game.undo();
+					GameFrame.this.controller.undo();
 				}
 			});
 		}

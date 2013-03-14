@@ -13,16 +13,16 @@ public class SwingMover extends SwingWorker<Move, Void>{
 	public SwingMover(Mover mover){
 		this.mover = mover;
 	}
-
+	
 	@Override
 	protected Move doInBackground() throws Exception{
-		return mover.call();
+		return this.mover.call();
 	}
 	
 	@Override
 	protected void done(){
 		try{
-			mover.getGame().executeMove(this.get());
+			this.mover.getGame().executeMove(this.get());
 		} catch (InterruptedException | ExecutionException e){
 			e.printStackTrace();
 		}
